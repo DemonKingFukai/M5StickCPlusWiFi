@@ -1,10 +1,3 @@
-/* FLASH SETTINGS
-Board: M5StickC Plus
-Flash Frequency: 80MHz
-Partition Scheme: Minimal SPIFFS
-https://www.online-utility.org/image/convert/to/XBM
-*/
-
 #include "configs.h"
 
 #ifndef HAS_SCREEN
@@ -28,13 +21,11 @@ https://www.online-utility.org/image/convert/to/XBM
 #include "Web.h"
 #include "Buffer.h"
 #include "BatteryInterface.h"
-#include "TemperatureInterface.h"
 #include "LedInterface.h"
 #include "esp_interface.h"
 #include "settings.h"
 #include "CommandLine.h"
 #include "lang_var.h"
-#include "flipperLED.h"
 
 #ifdef HAS_SCREEN
   #include "Display.h"
@@ -59,8 +50,6 @@ flipperLED flipper_led;
 #endif
 
 const String PROGMEM version_number = MARAUDER_VERSION;
-
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(Pixels, 26, NEO_GRB + NEO_KHZ800);
 
 uint32_t currentTime  = 0;
 
