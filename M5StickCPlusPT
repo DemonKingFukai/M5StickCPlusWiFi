@@ -1,0 +1,179 @@
+/* FLASH SETTINGS
+Board: M5StickC Plus
+Flash Frequency: 80MHz
+Partition Scheme: Minimal SPIFFS
+https://www.online-utility.org/image/convert/to/XBM
+*/
+
+#include "configs.h"
+
+#ifndef HAS_SCREEN
+  #define MenuFunctions_h
+  #define Display_h
+#endif
+
+#include <WiFi.h>
+#include <Wire.h>
+#include "esp_wifi.h"
+#include "esp_wifi_types.h"
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_system.h"
+#include <Arduino.h>
+
+#include "Assets.h"
+#include "WiFiScan.h"
+#include "SDInterface.h"
+#include "Web.h"
+#include "Buffer.h"
+#include "BatteryInterface.h"
+#include "TemperatureInterface.h"
+#include "LedInterface.h"
+#include "esp_interface.h"
+#include "settings.h"
+#include "CommandLine.h"
+#include "lang_var.h"
+#include "flipperLED.h"
+
+#ifdef HAS_SCREEN
+  #include "Display.h"
+  #include "MenuFunctions.h"
+#endif
+
+WiFiScan wifi_scan_obj;
+SDInterface sd_obj;
+Web web_obj;
+Buffer buffer_obj;
+BatteryInterface battery_obj;
+TemperatureInterface temp_obj;
+LedInterface led_obj;
+EspInterface esp_obj;
+Settings settings_obj;
+CommandLine cli_obj;
+flipperLED flipper_led;
+
+#ifdef HAS_SCREEN
+  Display display_obj;
+  MenuFunctions menu_function_obj;
+#endif
+
+const String PROGMEM version_number = MARAUDER_VERSION;
+
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(Pixels, 26, NEO_GRB + NEO_KHZ800);
+
+uint32_t currentTime  = 0;
+
+void backlightOn() {
+  #ifdef HAS_SCREEN
+    digitalWrite(TFT_LED, HIGH);
+  #endif
+}
+
+void backlightOff() {
+  #ifdef HAS_SCREEN
+    digitalWrite(TFT_LED, LOW);
+  #endif
+}
+
+void setup()
+{
+  pinMode(FLASH_BUTTON, INPUT);
+
+  #ifdef HAS_SCREEN
+    pinMode(TFT_LED, OUTPUT);
+  #endif
+  
+  backlightOff();
+#if BATTERY_ANALOG_ON == 1
+  pinMode(BATTERY_PIN, OUTPUT);
+  pinMode(CHARGING_PIN, INPUT);
+#endif
+  
+  // Preset SPI CS pins to avoid bus conflicts
+  #ifdef HAS_SCREEN
+    digitalWrite(TFT_CS, HIGH);
+  #endif
+
+  pinMode(SD_CS, OUTPUT);
+
+  delay(10);
+  
+  digitalWrite(SD_CS, HIGH);
+
+  delay(10);
+
+  Serial.begin(115200);
+  
+  Serial.println("ESP-IDF version is: " + String(esp_get_idf_version()));
+
+  #ifdef HAS_SCREEN
+    display_obj.RunSetup();
+    display_obj.tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  #endif
+
+  backlightOff();
+
+  // Draw the title screen
+  #ifdef HAS_SCREEN
+    display_obj.drawJpeg("/marauder3L.jpg", 0 , 0);     // 240 x 320 image
+  #endif
+
+  #ifdef HAS_SCREEN
+    display_obj.tft.drawCentreString(display_obj.version_number, 65, 115, 2);
+  #endif
+
+  backlightOn(); // Need this
+
+  #ifdef HAS_SCREEN
+    delay(2000);
+
+    display_obj.clearScreen();
+  
+    display_obj.tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  
+    display_obj.tft.println(text_table0[0]);
+  
+    delay(2000);
+  
+    display_obj.tft.println("Marauder " + display_obj.version_number + "\n");
+  
+    display_obj.tft.println(text_table0[1]);
+    
+    delay(2000);
+
+    display_obj.tft.println(text_table0[2]);
+
+    delay(2000);
+
+    display_obj.tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+    display_obj.tft.println("\n" + text_table0[3]);
+
+    delay(2000);
+
+    display_obj.clearScreen();
+    #endif
+
+strip.begin();
+strip.setBrightness(LED_BRIGHTNESS);
+strip.clear();
+
+// Startup LED animation
+flipper_led.run();
+
+// Load settings from SD card
+settings_obj.run();
+
+// Connect to WiFi
+web_obj.run();
+
+// Start serial CLI
+cli_obj.RunCLI();
+
+// Start main loop
+buffer_obj.RunMainLoop();
+}
+
+void loop() {} // Empty loop, all actions happen in RunMainLoop() method of Buffer object.
+
